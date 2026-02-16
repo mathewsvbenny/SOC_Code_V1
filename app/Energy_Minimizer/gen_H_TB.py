@@ -58,7 +58,7 @@ def generate_H_TB(win_file:str=None,*hr_files):
 
 
 
-def generate_H_TB_k_dep(H_TB_params:TBHamiltonian,k_vec=np.zeros(3)):
+def generate_H_TB_k_dep(H_TB_params:TBHamiltonian,k_vec=np.zeros(3))->np.ndarray:
     '''
     Docstring for generate_H_TB_k_dep
     
