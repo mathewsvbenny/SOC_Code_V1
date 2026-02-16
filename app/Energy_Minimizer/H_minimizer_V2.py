@@ -99,7 +99,7 @@ def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
         H_SOC= generate_H_SOC([params.win_file],initial_param)   # generate H_SOC (with optional local magnetic field)
         T_mat=Trasfer_Matrix_spinful([params.win_file])   # generate transfer matrix
         H_SOC_2=T_mat@H_SOC@T_mat.T              # transfer H_SOC to proper basis (orbital-major)
-        #############################################33
+        
 
     return energies
 
