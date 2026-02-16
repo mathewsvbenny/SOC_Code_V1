@@ -135,7 +135,7 @@ if __name__=="__main__":
     for entries in initial_param['magnetic-field']:
         print(entries)
     
-    
+    ######################################################################
     print('Few steps of variation')
     params=EnergyMinimizerParams(win_file,param_name,None,[hr_file_name])
     params.k_space=np.zeros(3)
