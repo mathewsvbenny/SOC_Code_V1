@@ -49,27 +49,46 @@ class EnergyMinimizerParams:
         self.TB_params=TBHamiltonian(self.win_file,*hr_files_list) #this holds the full information on TB model-> takes long to read so do it once
 
 
-def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
 
-    initial_param=read_params_wrapper(param_file=params.param_file, wannier_in_file=params.win_file) # get parameters to H_SOC
-    H_SOC= generate_H_SOC([params.win_file],initial_param)   # generate H_SOC (with optional local magnetic field)
+def Energy_minimizer_gen_H_TB_k(params:EnergyMinimizerParams,k_vec_list:list[np.ndarray])->list[np.ndarray]:
+    '''
+    Docstring for Energy_minimizer_gen_H_TB_k
+    Returns the list of H_TB for each k-vector from the k_vec_list
+    If memory can hold it it will speed-up things a lot more, ToBeSeen
+    '''
+    return [generate_H_TB_k_dep(params.TB_params,k_vec) for k_vec in k_vec_list]
+
+
+def Energy_minimizer_new_H_SOC(params:EnergyMinimizerParams,SOC_param:dict[str,list[str|float]]=None):
+    '''
+    Generates a new SOC matrix in the orbital-major basis, based on the fact
+    if user gave CUSTOM SOC params or not, then use the provided by in params-file
+    '''
+    if SOC_param is None:
+        SOC_param=read_params_wrapper(param_file=params.param_file, wannier_in_file=params.win_file) # get parameters to H_SOC
+    H_SOC= generate_H_SOC([params.win_file],SOC_param)   # generate H_SOC (with optional local magnetic field)
     T_mat=Trasfer_Matrix_spinful([params.win_file])   # generate transfer matrix
-    H_SOC_2=T_mat@H_SOC@T_mat.T              # transfer H_SOC to proper basis (orbital-major)
-    
-    #### Here should be the logic for minimization ####
+    H_SOC_2=T_mat@H_SOC@T_mat.T 
+    return H_SOC_2
+
+
+
+def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
     if fixed_k:
         k_vec_list=[np.zeros(3)]
     else:
         k_vec_list=read_k_space(params.win_file)
+    H_TB_k_list=Energy_minimizer_gen_H_TB_k(params,k_vec_list)
+    
+    H_SOC_param=read_params_wrapper(param_file=params.param_file, wannier_in_file=params.win_file) # get parameters to H_SOC
+    H_SOC=Energy_minimizer_new_H_SOC(params,H_SOC_param)
+   
+    #### Here should be the logic for minimization ####
     energies=[]
-    # k-integration
-    for k_it,k_vec in enumerate(k_vec_list):
-        print(f'doing {k_it}/{len(k_vec_list)}')
-        H=generate_H_TB_k_dep(params.TB_params,k_vec)+H_SOC_2
+    for H_mat in H_TB_k_list:
+        H=H_mat+H_SOC
         energies.append(np.linalg.eigvalsh(H))
     # To vary the angles one has to update initial_param
-    
-    
     ####################################################
     
     

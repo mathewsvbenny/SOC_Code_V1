@@ -97,11 +97,56 @@ class TestEnergyMinimizer:
         H_full=generate_H_Full(win_file,param_file,file_name)
         H_from_minimizer=Energy_minimizer(params)
         for e1,e2 in zip(np.linalg.eigvalsh(H_full),np.linalg.eigvalsh(H_from_minimizer)):
-            #print(f'Delta E({e1},{e2})={e1-e2}')
             
             if np.abs(e1-e2)> 1e-5:
                 raise ValueError("H-full and minimizer produce a different Hamiltonian fo k=0")
 
+
+from app.Unit_cell_composition.read_params import read_params_wrapper
+from app.Energy_Minimizer.H_minimizer import Energy_minimizer_gen_H_TB_k,Energy_minimizer_new_H_SOC
+
+class TestEnergyMinimizerPhysics:
+    win_file = os.path.join(root_dir, 'tests', 'test_cases', 'wannier90.win')
+    param_file = os.path.join(root_dir, 'tests', 'test_cases', 'params')
+    hr_file_name_1 = os.path.join(root_dir, 'tests', 'test_cases', 'wannier90_up_hr.dat')
+    hr_file_name_2 = os.path.join(root_dir, 'tests', 'test_cases', 'wannier90_down_hr.dat')
+
+    def test_spin_flip(self):
+        try:
+            #tb_params=TBHamiltonian(win_file,file_name)
+            params = EnergyMinimizerParams(
+                win_file=self.win_file, 
+                param_file=self.param_file, 
+                magnetic_group=None, 
+                hr_files_list=[self.hr_file_name_1]
+                )
+        except (FileNotFoundError, TypeError):
+            pytest.skip("Test files not available")
+        
+        
+        SOC_param=read_params_wrapper(param_file=self.param_file, wannier_in_file=self.win_file) # get parameters to H_SOC
+        #Tweak magnetic-field
+        orbs=list(set([m_loc[0] for m_loc in SOC_param['magnetic-field']])) # list of distinct atoms
+        print(f'We have a set of orbitals {orbs}')
+        m_field=100
+        print(f'Setting |m|={m_field}')
+        
+        angle=0        
+        for m_loc in SOC_param['magnetic-field']:
+            m_loc[-3]=m_field #if m_loc[0]==orbs[0] else 0.2*m_field# |m|- module of mag-field
+            m_loc[-2]=angle # theta
+            m_loc[-1]=0. # phi
+        
+        H_TB_k=Energy_minimizer_gen_H_TB_k(params,[np.zeros(3)])
+        for _ in range(6):
+            H_SOC= Energy_minimizer_new_H_SOC(params,SOC_param)
+            print(f'Angle is {angle}')
+            for H_TB in H_TB_k:
+                print(np.linalg.eigvalsh(H_TB+H_SOC)[:10])
+            angle += np.pi/5
+            for m_loc in SOC_param['magnetic-field']:
+                m_loc[-2]=angle
+
 if __name__=="__main__":
-    test1=TestEnergyMinimizer()
-    test1.test_energy_minimizer_vs_H_full()
+    test1=TestEnergyMinimizerPhysics()
+    test1.test_spin_flip()
