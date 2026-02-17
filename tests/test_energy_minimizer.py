@@ -136,16 +136,30 @@ class TestEnergyMinimizerPhysics:
             m_loc[-3]=m_field #if m_loc[0]==orbs[0] else 0.2*m_field# |m|- module of mag-field
             m_loc[-2]=angle # theta
             m_loc[-1]=0. # phi
-        
+        for soc_temp in SOC_param['magnetic-field']:
+            soc_temp[-1]=0.
+
+        energies=[]
+        angles=[]
         H_TB_k=Energy_minimizer_gen_H_TB_k(params,[np.zeros(3)])
         for _ in range(6):
             H_SOC= Energy_minimizer_new_H_SOC(params,SOC_param)
-            print(f'Angle is {angle}')
+            angles.append(angle)
             for H_TB in H_TB_k:
-                print(np.linalg.eigvalsh(H_TB+H_SOC)[:10])
+                energies.append(np.linalg.eigvalsh(H_TB+H_SOC)[:10])
             angle += np.pi/5
             for m_loc in SOC_param['magnetic-field']:
                 m_loc[-2]=angle
+        energies=np.array(energies)
+        diff=np.abs(energies[0,:]-energies[-1,:])
+        diff[diff<1e-6]=0
+        print(f'Azymuthal angle zero and pi are the same : {not np.any(diff)}')
+        assert not np.any(diff)
+        energies=np.vstack((angles, np.transpose(energies)))
+        print(diff)
+        for row in energies:
+            print('  '.join(list(map(lambda x: f'{x:>10.6f}',row))))    
+
 
 if __name__=="__main__":
     test1=TestEnergyMinimizerPhysics()
