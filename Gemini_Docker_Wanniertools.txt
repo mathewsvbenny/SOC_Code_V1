@@ -1,0 +1,71 @@
+To świetne pytanie, bo dotyka problemu **automatyzacji edycji plików** bez użycia edytorów tekstowych typu GUI czy interaktywnego Vima. W Dockerze wszystko musi dziać się "bez nadzoru".
+
+Jeśli w jednej warstwie robisz `RUN git clone ...`, to w kolejnej (lub tej samej) masz trzy główne drogi, zależnie od tego, jak skomplikowana ma być ta zmiana:
+
+---
+
+### 1. `sed` – Król edycji strumieniowej (Najczęstszy wybór)
+
+`sed` (Stream Editor) to standard w świecie Linuxa i Dockera. Pozwala wyszukać tekst i zamienić go na inny.
+
+**Przykład:** Chcesz zmienić flagę kompilacji w `Makefile` z `-O2` na `-O3`:
+
+```dockerfile
+RUN sed -i 's/-O2/-O3/g' Makefile
+
+```
+
+* `-i`: edytuje plik "w miejscu" (in-place).
+* `s`: oznacza zamianę (substitute).
+* `g`: oznacza zamianę wszystkich wystąpień w linii (global).
+
+### 2. `echo` i przekierowania – Dodawanie nowych linii
+
+Jeśli chcesz dopisać coś na końcu `Makefile` (np. nową ścieżkę do biblioteki), używasz operatora `>>`.
+
+```dockerfile
+RUN echo "LDFLAGS += -L/usr/local/lib" >> Makefile
+
+```
+
+### 3. `patch` – Profesjonalne podejście dla Seniorów
+
+Jeśli zmian jest dużo i są skomplikowane, robienie tego za pomocą `sed` to droga przez mękę. Wtedy przygotowujesz lokalnie plik `.patch` (różnicę między starym a nowym plikiem) i aplikujesz go w Dockerze.
+
+1. Tworzysz plik `my_changes.patch`.
+2. W Dockerze:
+
+```dockerfile
+COPY my_changes.patch .
+RUN patch Makefile my_changes.patch
+
+```
+
+---
+
+### Pułapka "Warstw" (Bardzo ważne pod kątem MLOps/HPC)
+
+Wspomniałeś: *"w jednej warstwie klonuję, w drugiej edytuję"*. Pamiętaj o złotej zasadzie optymalizacji obrazów:
+
+> **Zasada:** Jeśli zmodyfikujesz plik w nowej warstwie, Docker technicznie musi zapisać nową kopię tego pliku.
+
+Dla małego `Makefile` to nie problem. Ale jeśli w jednej warstwie pobierasz 1GB danych, a w drugiej je edytujesz/czyścisz, Twój obraz spuchnie o ten 1GB niepotrzebnie. Dlatego profesjonalnie łączy się to w jedną komendę:
+
+```dockerfile
+RUN git clone https://github.com/user/repo.git . && \
+    sed -i 's/old/new/g' Makefile && \
+    make
+
+```
+
+Dzięki temu operacja edycji dzieje się w tej samej warstwie co klonowanie, a plik końcowy jest mniejszy.
+
+### Podpowiedź na rozmowę:
+
+Jeśli zapytają, jak radzisz sobie z konfiguracją narzędzi w C++ (jak Twój SOC Code), powiedz:
+
+> "Do edycji plików konfiguracyjnych lub Makefile wewnątrz kontenerów używam `sed` do szybkich zamian parametrów lub narzędzia `patch` przy bardziej złożonych modyfikacjach. Zawsze dbam o to, by te operacje działy się w tej samej warstwie co pobieranie kodu, aby zminimalizować rozmiar obrazu (image size optimization)."
+
+---
+
+**Czy chcesz, żebyśmy teraz wrócili do `spec` w Kubernetesie i tych Sond (Liveness/Readiness), które powiedzą nam, czy skompilowana aplikacja poprawnie "wstała"?**
