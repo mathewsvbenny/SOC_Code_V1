@@ -4,7 +4,6 @@ import pytest
 from pathlib import Path
 root_dir = Path(__file__).parent.parent
 sys.path.append(str(root_dir))
-print(root_dir)
 from app.Energy_Minimizer.H_minimizer import Energy_minimizer, EnergyMinimizerParams, MagneticGroup
 from app.Energy_Minimizer.gen_H_full import generate_H_Full
 from app.Energy_Minimizer.gen_H_TB import TBHamiltonian
@@ -142,12 +141,13 @@ class TestEnergyMinimizerPhysics:
         energies=[]
         angles=[]
         H_TB_k=Energy_minimizer_gen_H_TB_k(params,[np.zeros(3)])
-        for _ in range(6):
+        num_of_angles=7
+        for _ in range(num_of_angles+1):
             H_SOC= Energy_minimizer_new_H_SOC(params,SOC_param)
             angles.append(angle)
             for H_TB in H_TB_k:
                 energies.append(np.linalg.eigvalsh(H_TB+H_SOC)[:10])
-            angle += np.pi/5
+            angle += np.pi/num_of_angles
             for m_loc in SOC_param['magnetic-field']:
                 m_loc[-2]=angle
         energies=np.array(energies)
@@ -156,7 +156,6 @@ class TestEnergyMinimizerPhysics:
         print(f'Azymuthal angle zero and pi are the same : {not np.any(diff)}')
         assert not np.any(diff)
         energies=np.vstack((angles, np.transpose(energies)))
-        print(diff)
         for row in energies:
             print('  '.join(list(map(lambda x: f'{x:>10.6f}',row))))    
 

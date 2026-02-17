@@ -88,7 +88,8 @@ def generate_H_SOC(filenames=[], params={}, print_details=False)-> np.ndarray:
     '''
     Calculates H_SOC matrix including magnetic field defined in params
     '''
-    print("Number of win's = ", len(filenames))
+    if print_details:
+        print("Number of win's = ", len(filenames))
     if(len(filenames) == 0):
         win_file='wanner90.win'
     elif (len(filenames) == 1):	#if we pas 1 file, both are the same
