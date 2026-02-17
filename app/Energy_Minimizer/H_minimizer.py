@@ -62,11 +62,17 @@ def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
     else:
         k_vec_list=read_k_space(params.win_file)
     energies=[]
+    # k-integration
     for k_it,k_vec in enumerate(k_vec_list):
         print(f'doing {k_it}/{len(k_vec_list)}')
         H=generate_H_TB_k_dep(params.TB_params,k_vec)+H_SOC_2
         energies.append(np.linalg.eigvalsh(H))
+    # To vary the angles one has to update initial_param
+    
+    
     ####################################################
+    
+    
     return energies
 
 
