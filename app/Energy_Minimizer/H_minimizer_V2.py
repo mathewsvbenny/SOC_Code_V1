@@ -103,6 +103,8 @@ def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
 
     return energies
 
+#before rebasing
+
 
 
 
