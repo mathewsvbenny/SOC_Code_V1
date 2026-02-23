@@ -23,7 +23,7 @@ def Energy_minimizer_test(params:EnergyMinimizerParams,fixed_k:False)->np.ndarra
         entries[-2] = theta
         entries[-3] = 100.
     for entries in initial_param['SOC']:
-        entries[-1]=0.
+        entries[-1]=1.
 
     H_SOC= generate_H_SOC([params.win_file],initial_param) # generate H_SOC (with optional local magnetic field)
     T_mat=Trasfer_Matrix_spinful([params.win_file]) # generate transfer matrix

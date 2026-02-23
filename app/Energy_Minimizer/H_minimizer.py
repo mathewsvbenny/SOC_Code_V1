@@ -1,5 +1,6 @@
 import numpy as np
 import os,sys
+import datetime
 
 from pathlib import Path
 root_dir=Path(__file__).parent.parent.parent
@@ -33,7 +34,7 @@ class EnergyMinimizerParams:
         2) hoppings-> read from files hoppings intra- and inter- unit cell obtained from wannierization
 
     '''
-    def __init__(self,win_file:str=None,param_file:str='params',magnetic_group:MagneticGroup=None,hr_files_list=[]):
+    def __init__(self,win_file:str=None,param_file:str='params',magnetic_group:MagneticGroup=None,hr_files_list=[],min_val:float=None):
         self.win_file=win_file
        
         if param_file=='params':
@@ -47,7 +48,39 @@ class EnergyMinimizerParams:
         self.magnetic_group=magnetic_group
         self.k_space=[np.zeros(3)]
         self.TB_params=TBHamiltonian(self.win_file,*hr_files_list) #this holds the full information on TB model-> takes long to read so do it once
+        if not min_val is None:
+            self.TB_params.truncate(min_val)
+        self._min_val=min_val
+        self._filling=1.
 
+
+    @property
+    def min_val(self):
+        return self._min_val
+    
+    @min_val.setter
+    def min_val(self,min_val:float):
+        if isinstance(min_val,float):
+            self._min_val=min_val
+            self.TB_params.truncate(min_val)
+        else:
+            raise TypeError("Min_val should be a float")
+
+    @property
+    def filling(self)->None:
+        return self._filling
+    @filling.setter
+    def filling(self,n:float|int)->None:
+        '''
+        Docstring for filling
+        
+        :param n: fraction of all states that is occupied
+        :type n: float,int
+        '''
+        if not isinstance(n,(float,int)):
+            raise ValueError("Filling should be in [0,1] range")
+        else:
+            self._filling=n
 
 
 def Energy_minimizer_gen_H_TB_k(params:EnergyMinimizerParams,k_vec_list:list[np.ndarray])->list[np.ndarray]:
@@ -56,8 +89,11 @@ def Energy_minimizer_gen_H_TB_k(params:EnergyMinimizerParams,k_vec_list:list[np.
     Returns the list of H_TB for each k-vector from the k_vec_list
     If memory can hold it it will speed-up things a lot more, ToBeSeen
     '''
-    return [generate_H_TB_k_dep(params.TB_params,k_vec) for k_vec in k_vec_list]
-
+    print(f'Creating list of TB hamiltonias (for each k (#{len(k_vec_list)}))',end=' ',flush=True)
+    start_H_TB=datetime.datetime.now()  
+    res= [generate_H_TB_k_dep(params.TB_params,k_vec) for k_vec in k_vec_list]
+    print(f' took {datetime.datetime.now()-start_H_TB}')
+    return res
 
 def Energy_minimizer_new_H_SOC(params:EnergyMinimizerParams,SOC_param:dict[str,list[str|float]]=None):
     '''
@@ -78,21 +114,31 @@ def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
         k_vec_list=[np.zeros(3)]
     else:
         k_vec_list=read_k_space(params.win_file)
+      
     H_TB_k_list=Energy_minimizer_gen_H_TB_k(params,k_vec_list)
     
+
     H_SOC_param=read_params_wrapper(param_file=params.param_file, wannier_in_file=params.win_file) # get parameters to H_SOC
     H_SOC=Energy_minimizer_new_H_SOC(params,H_SOC_param)
-   
+    #max_filling
+    n_states=H_SOC.shape[0]
+    max_filled_state=int(np.ceil(n_states*params.filling))
+
     #### Here should be the logic for minimization ####
     energies=[]
+    stat_t= datetime.datetime.now()
+    print(f'Starting integration at {stat_t.strftime("%H:%M:%S %d/%m/%Y")}')
     for H_mat in H_TB_k_list:
         H=H_mat+H_SOC
-        energies.append(np.linalg.eigvalsh(H))
-    # To vary the angles one has to update initial_param
-    ####################################################
+
+        energies.append(np.sum(np.linalg.eigvalsh(H)[:max_filled_state]))
+        old_t=stat_t
+        stat_t=datetime.datetime.now()
+        t_diff=(stat_t-old_t)
+        print(f'Calculation took {t_diff}')
     
-    
-    return energies
+    number_of_dimensions=3
+    return [np.average(energies)/(number_of_dimensions*2.*np.pi)]
 
 
 
@@ -103,6 +149,6 @@ if __name__=="__main__":
     hr_file_name2='tests/test_cases/wannier90_down_hr.dat' 
     param_name='tests/test_cases/params'
     params=EnergyMinimizerParams(win_file,param_name,None,[hr_file_name])
-    params.k_space=np.zeros(3)
-    res=Energy_minimizer(params,True)
-    print(np.array(res)[:,0])
+    params.min_val=1e-2
+    res=Energy_minimizer(params,False)
+    print(np.array(res))

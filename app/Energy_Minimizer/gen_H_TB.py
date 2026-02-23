@@ -25,8 +25,12 @@ class TBHamiltonian:
             raise FileNotFoundError(f'{win_file} was not found, check where you are')
         print(f'Reading compositon from {win_file}')
         self.comp=composition_wrapper(win_file)
-        print("Truncating zero-valued hopping elements")
-        self.hoppings=list(filter(lambda x: np.abs(x.hop)>1e-5,merged))
+        #print("Truncating zero-valued hopping elements")
+        self.hoppings=merged
+
+    def truncate(self, min_val: float=1e-3):
+        print(f'Truncating hoppings < {min_val}')
+        self.hoppings=list(filter(lambda x: np.abs(x.hop)>1e-3,self.hoppings))
 
 
 def generate_H_TB(win_file:str=None,*hr_files):
@@ -58,7 +62,7 @@ def generate_H_TB(win_file:str=None,*hr_files):
 
 
 
-def generate_H_TB_k_dep(H_TB_params:TBHamiltonian,k_vec=np.zeros(3))->np.ndarray:
+def generate_H_TB_k_dep(H_TB_params:TBHamiltonian,k_vec=np.zeros(3),min_val: float =None):
     '''
     Docstring for generate_H_TB_k_dep
     
@@ -69,6 +73,8 @@ def generate_H_TB_k_dep(H_TB_params:TBHamiltonian,k_vec=np.zeros(3))->np.ndarray
     num_wann=H_TB_params.comp.get_num_wann()
     spin_degeneracy=2
     num_spin_wann=spin_degeneracy*num_wann
+    if not min_val is None:
+        H_TB_params.truncate(min_val) 
 
     H_TB = np.zeros((num_spin_wann,num_spin_wann), dtype=complex) # Inititate proprely sized zero-matrix
     for sets in H_TB_params.hoppings:
