@@ -112,7 +112,6 @@ class TestEnergyMinimizerPhysics:
 
     def test_spin_flip(self):
         try:
-            #tb_params=TBHamiltonian(win_file,file_name)
             params = EnergyMinimizerParams(
                 win_file=self.win_file, 
                 param_file=self.param_file, 
@@ -135,17 +134,23 @@ class TestEnergyMinimizerPhysics:
             m_loc[-3]=m_field #if m_loc[0]==orbs[0] else 0.2*m_field# |m|- module of mag-field
             m_loc[-2]=angle # theta
             m_loc[-1]=0. # phi
-        for soc_temp in SOC_param['magnetic-field']:
-            soc_temp[-1]=0.
+
+        # One needs SOC and TB to fix quatization axis        
+        # otherwise rotating mag_field only rotates the quatization
+        # axis and thus the enrgy is unchanged
+        for soc_temp in SOC_param['SOC']: 
+            soc_temp[-1]=1.
 
         energies=[]
         angles=[]
         H_TB_k=Energy_minimizer_gen_H_TB_k(params,[np.zeros(3)])
-        num_of_angles=7
+        num_of_angles=8
         for _ in range(num_of_angles+1):
             H_SOC= Energy_minimizer_new_H_SOC(params,SOC_param)
+
             angles.append(angle)
             for H_TB in H_TB_k:
+                
                 energies.append(np.linalg.eigvalsh(H_TB+H_SOC)[:10])
             angle += np.pi/num_of_angles
             for m_loc in SOC_param['magnetic-field']:
@@ -157,7 +162,7 @@ class TestEnergyMinimizerPhysics:
         assert not np.any(diff)
         energies=np.vstack((angles, np.transpose(energies)))
         for row in energies:
-            print('  '.join(list(map(lambda x: f'{x:>10.6f}',row))))    
+            print('  '.join(list(map(lambda x: f'{x:>12.8f}',row))))    
 
 
 if __name__=="__main__":

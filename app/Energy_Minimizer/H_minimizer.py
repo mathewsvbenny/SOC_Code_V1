@@ -45,7 +45,7 @@ class EnergyMinimizerParams:
             print(f'{param_file} exists')
         self.param_file=param_file
         self.magnetic_group=magnetic_group
-        self.k_space=np.zeros(3)
+        self.k_space=[np.zeros(3)]
         self.TB_params=TBHamiltonian(self.win_file,*hr_files_list) #this holds the full information on TB model-> takes long to read so do it once
 
 
