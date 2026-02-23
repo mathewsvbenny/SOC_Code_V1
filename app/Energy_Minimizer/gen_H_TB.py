@@ -29,7 +29,7 @@ class TBHamiltonian:
         self.hoppings=merged
 
     def truncate(self, min_val: float=1e-3):
-        print(f'Truncating hoppings < {min_val}')
+        print(f'Truncating hoppings t with |t| < {min_val}')
         self.hoppings=list(filter(lambda x: np.abs(x.hop)>1e-3,self.hoppings))
 
 

@@ -1,10 +1,10 @@
 import numpy as np
 import os,sys
 import datetime
+from tqdm import tqdm
 
 from pathlib import Path
 root_dir=Path(__file__).parent.parent.parent
-print(root_dir)
 sys.path.append(str(root_dir))
 
 from app.Energy_Minimizer.gen_H_TB import generate_H_TB_k_dep,TBHamiltonian
@@ -89,10 +89,7 @@ def Energy_minimizer_gen_H_TB_k(params:EnergyMinimizerParams,k_vec_list:list[np.
     Returns the list of H_TB for each k-vector from the k_vec_list
     If memory can hold it it will speed-up things a lot more, ToBeSeen
     '''
-    print(f'Creating list of TB hamiltonias (for each k (#{len(k_vec_list)}))',end=' ',flush=True)
-    start_H_TB=datetime.datetime.now()  
-    res= [generate_H_TB_k_dep(params.TB_params,k_vec) for k_vec in k_vec_list]
-    print(f' took {datetime.datetime.now()-start_H_TB}')
+    res= [generate_H_TB_k_dep(params.TB_params,k_vec) for k_vec in tqdm(k_vec_list,desc='Generating list of k-dependent Hamiltonians')]
     return res
 
 def Energy_minimizer_new_H_SOC(params:EnergyMinimizerParams,SOC_param:dict[str,list[str|float]]=None):
@@ -108,7 +105,6 @@ def Energy_minimizer_new_H_SOC(params:EnergyMinimizerParams,SOC_param:dict[str,l
     return H_SOC_2
 
 
-
 def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
     if fixed_k:
         k_vec_list=[np.zeros(3)]
@@ -119,6 +115,7 @@ def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
     
 
     H_SOC_param=read_params_wrapper(param_file=params.param_file, wannier_in_file=params.win_file) # get parameters to H_SOC
+
     H_SOC=Energy_minimizer_new_H_SOC(params,H_SOC_param)
     #max_filling
     n_states=H_SOC.shape[0]
@@ -126,16 +123,9 @@ def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
 
     #### Here should be the logic for minimization ####
     energies=[]
-    stat_t= datetime.datetime.now()
-    print(f'Starting integration at {stat_t.strftime("%H:%M:%S %d/%m/%Y")}')
-    for H_mat in H_TB_k_list:
+    for H_mat in tqdm(H_TB_k_list,desc='Integrating the k-dependent H with SOC terms'):
         H=H_mat+H_SOC
-
         energies.append(np.sum(np.linalg.eigvalsh(H)[:max_filled_state]))
-        old_t=stat_t
-        stat_t=datetime.datetime.now()
-        t_diff=(stat_t-old_t)
-        print(f'Calculation took {t_diff}')
     
     number_of_dimensions=3
     return [np.average(energies)/(number_of_dimensions*2.*np.pi)]
