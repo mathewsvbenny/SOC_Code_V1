@@ -104,7 +104,7 @@ def Energy_minimizer_new_H_SOC(params:EnergyMinimizerParams,SOC_param:dict[str,l
     H_SOC_2=T_mat@H_SOC@T_mat.T 
     return H_SOC_2
 
-
+from scipy.optimize import minimize
 def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
     if fixed_k:
         k_vec_list=[np.zeros(3)]
@@ -112,25 +112,34 @@ def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
         k_vec_list=read_k_space(params.win_file)
       
     H_TB_k_list=Energy_minimizer_gen_H_TB_k(params,k_vec_list)
-    
-
-    H_SOC_param=read_params_wrapper(param_file=params.param_file, wannier_in_file=params.win_file) # get parameters to H_SOC
-
-    H_SOC=Energy_minimizer_new_H_SOC(params,H_SOC_param)
-    #max_filling
-    n_states=H_SOC.shape[0]
+    #filling-related stuff -> hihghest occupierd state 
+    n_states=H_TB_k_list[0].shape[0]
     max_filled_state=int(np.ceil(n_states*params.filling))
-
-    #### Here should be the logic for minimization ####
-    energies=[]
-    for H_mat in tqdm(H_TB_k_list,desc='Integrating the k-dependent H with SOC terms'):
-        H=H_mat+H_SOC
-        energies.append(np.sum(np.linalg.eigvalsh(H)[:max_filled_state]))
     
-    number_of_dimensions=3
-    return [np.average(energies)/(number_of_dimensions*2.*np.pi)]
+    #### Here should be the logic for minimization ####
+    H_SOC_param=read_params_wrapper(param_file=params.param_file, wannier_in_file=params.win_file) # get parameters to H_SOC
+    
+    def minimizer_internals(x):
+        nonlocal H_TB_k_list,H_SOC_param
+        H_SOC=Energy_minimizer_new_H_SOC(params,H_SOC_param)
+        for mag_field_internals in H_SOC_param['magnetic-field']:
+            mag_field_internals[-2] = x[0]
+            mag_field_internals[-1] = x[1]
 
+        energies=[]
+        for H_mat in tqdm(H_TB_k_list,desc='Integrating the k-dependent H with SOC terms'):
+            H=H_mat+H_SOC
+            energies.append(np.sum(np.linalg.eigvalsh(H)[:max_filled_state]))
+        
+        number_of_dimensions=3
+        return [np.average(energies)/(number_of_dimensions*2.*np.pi)]
 
+    res=minimize(minimizer_internals,
+                 np.zeros(2),
+                 method='nelder-mead',
+                 bounds=[(0,np.pi),(0,2*np.pi)]
+                )
+    return res.x
 
 
 if __name__=="__main__":
