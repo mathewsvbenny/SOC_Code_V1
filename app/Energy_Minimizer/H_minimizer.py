@@ -137,7 +137,7 @@ def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
     res=minimize(minimizer_internals,
                  np.zeros(2),
                  method='nelder-mead',
-                 bounds=[(0,np.pi),(0,2*np.pi)]
+                 bounds=[(0.5*np.pi,np.pi),(0,2*np.pi)]
                 )
     return res.x
 
