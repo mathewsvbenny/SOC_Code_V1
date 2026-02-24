@@ -1,6 +1,5 @@
 import numpy as np
 import os,sys
-import datetime
 from tqdm import tqdm
 
 from pathlib import Path
@@ -104,6 +103,8 @@ def Energy_minimizer_new_H_SOC(params:EnergyMinimizerParams,SOC_param:dict[str,l
     H_SOC_2=T_mat@H_SOC@T_mat.T 
     return H_SOC_2
 
+
+
 from scipy.optimize import minimize
 def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
     if fixed_k:
@@ -118,26 +119,33 @@ def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
     
     #### Here should be the logic for minimization ####
     H_SOC_param=read_params_wrapper(param_file=params.param_file, wannier_in_file=params.win_file) # get parameters to H_SOC
-    
+    for SOC_internals in H_SOC_param['SOC']:
+        SOC_internals[-1]=1.
+
+
     def minimizer_internals(x):
         nonlocal H_TB_k_list,H_SOC_param
-        H_SOC=Energy_minimizer_new_H_SOC(params,H_SOC_param)
         for mag_field_internals in H_SOC_param['magnetic-field']:
+            mag_field_internals[-3] = 10.
             mag_field_internals[-2] = x[0]
             mag_field_internals[-1] = x[1]
 
+        H_SOC=Energy_minimizer_new_H_SOC(params,H_SOC_param)
         energies=[]
         for H_mat in tqdm(H_TB_k_list,desc='Integrating the k-dependent H with SOC terms'):
             H=H_mat+H_SOC
             energies.append(np.sum(np.linalg.eigvalsh(H)[:max_filled_state]))
         
         number_of_dimensions=3
-        return [np.average(energies)/(number_of_dimensions*2.*np.pi)]
+        res=[np.average(energies)/(number_of_dimensions*2.*np.pi)]
+        print(f'Energy at theta={x[0]}, phi={x[1]} is  {res[0]:.6f}')
+        return res
 
     res=minimize(minimizer_internals,
                  np.ones(2),
                  method='nelder-mead',
-                 bounds=[(0.5*np.pi,np.pi),(0,2*np.pi)]
+                 bounds=[(0.,np.pi),(0.,2.*np.pi)],
+                 options={'xatol': 1e-8, 'disp': True}
                 )
     return res.x
 
@@ -149,5 +157,6 @@ if __name__=="__main__":
     param_name='tests/test_cases/params'
     params=EnergyMinimizerParams(win_file,param_name,None,[hr_file_name])
     params.min_val=1e-2
+    params.filling=0.66
     res=Energy_minimizer(params,False)
     print(np.array(res))
