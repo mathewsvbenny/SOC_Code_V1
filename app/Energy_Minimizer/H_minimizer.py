@@ -14,6 +14,7 @@ from app.Basis_reordering.Transfer_Matrix import Trasfer_Matrix_spinful
 from app.Unit_cell_composition.read_params import read_params_wrapper
 #helper to read model parameters from a file
 from app.Unit_cell_composition.read_k_space import read_k_space
+from app.Unit_cell_composition.read_win import composition_wrapper
 
 class MagneticGroup:
     pass
@@ -106,7 +107,8 @@ def Energy_minimizer_new_H_SOC(params:EnergyMinimizerParams,SOC_param:dict[str,l
 
 
 from scipy.optimize import minimize
-def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
+import random
+def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False,m:float=0,l_SOC:float=0.)->np.ndarray:
     if fixed_k:
         k_vec_list=[np.zeros(3)]
     else:
@@ -120,15 +122,33 @@ def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
     #### Here should be the logic for minimization ####
     H_SOC_param=read_params_wrapper(param_file=params.param_file, wannier_in_file=params.win_file) # get parameters to H_SOC
     for SOC_internals in H_SOC_param['SOC']:
-        SOC_internals[-1]=1.
-
+        SOC_internals[-1]=l_SOC
+    magnetic_moment=m
+    ### Get all As atoms
+    #unit_cell=composition_wrapper(file_name=params.win_file)
+    #num_of_as=0
+    #for at in unit_cell:
+    #    if at.name=='As':
+    #        num_of_as +=1
+    #print(f'There is {num_of_as} As atoms')
+    num_of_as=1
 
     def minimizer_internals(x):
-        nonlocal H_TB_k_list,H_SOC_param
+        nonlocal H_TB_k_list,H_SOC_param,magnetic_moment
+        as_iter=0
         for mag_field_internals in H_SOC_param['magnetic-field']:
-            mag_field_internals[-3] = 10.
-            mag_field_internals[-2] = x[0]
-            mag_field_internals[-1] = x[1]
+            if mag_field_internals[0] == 'As':
+                
+                mag_field_internals[-3] = magnetic_moment
+                mag_field_internals[-2] = x[as_iter*2+0]
+                mag_field_internals[-1] = x[as_iter*2+1]
+                #as_iter +=1
+                #if as_iter == num_of_as:
+                #    raise ValueError("Something is wrong with countng As")
+
+            else:
+                mag_field_internals[-3]=0.
+
 
         H_SOC=Energy_minimizer_new_H_SOC(params,H_SOC_param)
         energies=[]
@@ -138,14 +158,18 @@ def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
         
         number_of_dimensions=3
         res=[np.average(energies)/(number_of_dimensions*2.*np.pi)]
-        print(f'Energy at theta={x[0]}, phi={x[1]} is  {res[0]:.6f}')
+        print(f'Energy at ', end='')
+        for it in range(0,len(x),2):
+            print(f'theta={x[it]}, phi={x[it+1]} ',end='')
+        print(f' is  {res[0]:.6f}')
+        
         return res
 
     res=minimize(minimizer_internals,
-                 np.ones(2),
+                 [random.random() for _ in range(2*num_of_as)],
                  method='nelder-mead',
-                 bounds=[(0.,np.pi),(0.,2.*np.pi)],
-                 options={'xatol': 1e-8, 'disp': True}
+                 bounds=[b for _ in range(num_of_as) for b in [(0.,np.pi),(0.,2.*np.pi)]],
+                 options={'xatol': 1e-8, 'disp': True,'maxiter': 300*2*num_of_as}
                 )
     return res.x
 
@@ -156,7 +180,15 @@ if __name__=="__main__":
     hr_file_name2='tests/test_cases/wannier90_down_hr.dat' 
     param_name='tests/test_cases/params'
     params=EnergyMinimizerParams(win_file,param_name,None,[hr_file_name])
+
     params.min_val=1e-2
     params.filling=0.66
-    res=Energy_minimizer(params,False)
-    print(np.array(res))
+
+    final_outcome=[]
+    for l_SOC in np.arange(0.75, 1.1,0.05):
+        res=Energy_minimizer(params,False,m=1.,l_SOC=l_SOC)
+        final_outcome.append([f'{x:.6f}' for x in [l_SOC,*res]])
+        print(final_outcome[-1])
+    with open('SOC_in_FM.dat','a') as f:
+        for res in final_outcome:
+            f.write(' '.join(res)+'\n')
