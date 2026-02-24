@@ -5,3 +5,4 @@ app/test_cases/
 .cache/
 .pytest_cache
 *.xml
+SOC_Code_V1_env/

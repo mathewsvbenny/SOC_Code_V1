@@ -135,7 +135,7 @@ def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False)->np.ndarray:
         return [np.average(energies)/(number_of_dimensions*2.*np.pi)]
 
     res=minimize(minimizer_internals,
-                 np.zeros(2),
+                 np.ones(2),
                  method='nelder-mead',
                  bounds=[(0.5*np.pi,np.pi),(0,2*np.pi)]
                 )

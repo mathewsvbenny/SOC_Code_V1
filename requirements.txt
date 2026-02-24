@@ -1,4 +1,5 @@
 numpy >= 2.2.2
 termcolor
 pytest>=7.0
-
+tqdm >= 4.67.3
+scipy >= 1.17.1
