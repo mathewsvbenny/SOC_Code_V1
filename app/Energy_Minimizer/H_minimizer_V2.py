@@ -175,10 +175,10 @@ def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False,m:float=0,l_SOC:
 
 
 if __name__=="__main__":
-    win_file='tests/test_cases/wannier90.win'
-    hr_file_name='tests/test_cases/wannier90_up_hr.dat'
-    hr_file_name2='tests/test_cases/wannier90_down_hr.dat' 
-    param_name='tests/test_cases/params'
+    win_file='tests/test_cases/wannier90_SRO.win'
+    hr_file_name='tests/test_cases/wannier90_hr_SRO.dat'
+    #hr_file_name2='tests/test_cases/wannier90_down_hr.dat' 
+    param_name='tests/test_cases/params_SRO'
     params=EnergyMinimizerParams(win_file,param_name,None,[hr_file_name])
 
     params.min_val=1e-2
