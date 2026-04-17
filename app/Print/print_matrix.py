@@ -62,10 +62,16 @@ def save_to_file(merged_hamiltonian, input_filename=[], output_filename: str ="o
         f.write(str(int(header_lines[2])) + "\n")   #nrpts
 
         nrpt_header_lines = np.loadtxt(input_filename[0], skiprows=3, max_rows=int(np.ceil(nrpts/15))-1)
+        # "-1" above is to avoid reading the line witn number of entries different from 15
         for n_h_line in nrpt_header_lines:
             line = " ".join(str(int(x)) for x in n_h_line)
             f.write(line + "\n")
+
         nrpts_last_line = np.loadtxt(input_filename[0], skiprows=3+int(np.ceil(nrpts/15))-1, max_rows=1)
+        # Sanity check to ensure that nrpts_last_line is a 1D array, even if it contains only one element
+        if np.ndim(nrpts_last_line) == 0:
+            nrpts_last_line = [nrpts_last_line]
+        
         f.write(" ".join(str(int(x)) for x in nrpts_last_line) + "\n")
 
         for sets in merged_hamiltonian:

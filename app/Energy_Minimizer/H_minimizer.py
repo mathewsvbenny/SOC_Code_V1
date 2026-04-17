@@ -136,18 +136,18 @@ def Energy_minimizer(params:EnergyMinimizerParams,fixed_k:False,m:float=0,l_SOC:
     def minimizer_internals(x):
         nonlocal H_TB_k_list,H_SOC_param,magnetic_moment
         as_iter=0
-        for mag_field_internals in H_SOC_param['magnetic-field']:
-            if mag_field_internals[0] == 'As':
+        #for mag_field_internals in H_SOC_param['magnetic-field']:
+            #if mag_field_internals[0] == 'As':
                 
-                mag_field_internals[-3] = magnetic_moment
-                mag_field_internals[-2] = x[as_iter*2+0]
-                mag_field_internals[-1] = x[as_iter*2+1]
+            #    mag_field_internals[-3] = magnetic_moment
+            #    mag_field_internals[-2] = x[as_iter*2+0]
+            #    mag_field_internals[-1] = x[as_iter*2+1]
                 #as_iter +=1
                 #if as_iter == num_of_as:
                 #    raise ValueError("Something is wrong with countng As")
 
-            else:
-                mag_field_internals[-3]=0.
+            #else:
+            #    mag_field_internals[-3]=0.
 
 
         H_SOC=Energy_minimizer_new_H_SOC(params,H_SOC_param)
